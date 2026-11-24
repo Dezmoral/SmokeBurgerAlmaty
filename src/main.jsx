@@ -42,7 +42,10 @@ function Header({ page, navigate, itemCount, openCart, lang, setLang }) {
         <SiteLink to="/contacts" navigate={navigate} className={page==='contacts'?'active':''}>{tx(lang,'contacts')}</SiteLink>
         <button className="language-toggle" onClick={()=>setLang(lang==='ru'?'kk':'ru')} aria-label={lang==='ru'?'Қазақшаға ауысу':'Переключить на русский'}>{lang==='ru'?<>RU <span>/</span> ҚАЗ</>:<>ҚАЗ <span>/</span> RU</>}</button>
       </nav>
-      <button className="cart-trigger" onClick={openCart}><span className="cart-icon">▱</span><span>{tx(lang,'cart')}</span><b className="cart-count">{itemCount}</b></button>
+      <button className="cart-trigger" onClick={openCart}>
+        <svg className="cart-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.1a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 1.9-1.4L21 8H6"/><circle cx="10" cy="20" r="1.2"/><circle cx="18" cy="20" r="1.2"/></svg>
+        <span className="cart-label">{tx(lang,'cart')}</span><b className="cart-count">{itemCount}</b>
+      </button>
     </header>
   </>;
 }
