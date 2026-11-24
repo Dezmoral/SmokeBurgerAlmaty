@@ -11,6 +11,7 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const backendConfigured = Boolean(backendUrl && anonKey);
 export const demoMode = !backendConfigured;
 export const onlinePaymentEnabled = backendConfigured && import.meta.env.VITE_ONLINE_PAYMENT_ENABLED === 'true';
+export const demoPaymentEnabled = demoMode && import.meta.env.DEV;
 
 function readSession() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.session) || 'null'); }

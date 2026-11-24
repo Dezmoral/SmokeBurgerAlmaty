@@ -5,7 +5,7 @@ import { business } from './business.js';
 import { categoriesByLang, sectionText, ui } from './i18n.js';
 import AdminPage from './admin.jsx';
 import {
-  backendConfigured, demoMode, demoStorageKeys, readDemoList, writeDemoList,
+  backendConfigured, demoMode, demoPaymentEnabled, demoStorageKeys, readDemoList, writeDemoList,
   fetchMenu, fetchPromotions, fetchReviews, sendReview, createOrder,
   onlinePaymentEnabled, startFreedomPayPayment, getPaymentStatus,
 } from './backend.js';
@@ -225,9 +225,9 @@ function CartDrawer({ cart, setCart, closeCart, navigate, lang, onCreateOrder })
     setSending(true);setOrderError('');
     const orderId=globalThis.crypto?.randomUUID?.()||'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,char=>{const random=Math.random()*16|0;return (char==='x'?random:(random&3|8)).toString(16)});
     const orderCode=`SB-${orderId.replaceAll('-','').slice(0,8).toUpperCase()}`;
-    const target=onlinePaymentEnabled?null:window.open('about:blank','_blank');
+    const target=onlinePaymentEnabled||demoPaymentEnabled?null:window.open('about:blank','_blank');
     if(target)target.opener=null;
-    const order={id:orderId,order_code:orderCode,customer_name:customer.name,customer_phone:customer.phone,delivery_address:customer.address,customer_comment:customer.comment||'',items:cart.map(item=>({id:item.id,name_ru:item.name,name_kk:item.nameKk||item.name,qty:item.qty,unit_price:item.price,line_total:item.price*item.qty,addons:addonLabels(item,lang),addon_options:item.addons||{},note:item.note||''})),total:sum,consent:true,status:'new',payment_status:onlinePaymentEnabled?'unpaid':'not_required'};
+    const order={id:orderId,order_code:orderCode,customer_name:customer.name,customer_phone:customer.phone,delivery_address:customer.address,customer_comment:customer.comment||'',items:cart.map(item=>({id:item.id,name_ru:item.name,name_kk:item.nameKk||item.name,qty:item.qty,unit_price:item.price,line_total:item.price*item.qty,addons:addonLabels(item,lang),addon_options:item.addons||{},note:item.note||''})),total:sum,consent:true,status:'new',payment_status:onlinePaymentEnabled||demoPaymentEnabled?'unpaid':'not_required'};
     try{
       const result=await onCreateOrder(order);
       if(result?.paymentUrl){window.location.assign(result.paymentUrl);return}
@@ -246,7 +246,7 @@ function CartDrawer({ cart, setCart, closeCart, navigate, lang, onCreateOrder })
         {cart.some(item=>item.available===false)&&<p className="cart-stock-warning">{tx(lang,'unavailable')}</p>}
         {cart.length===0?<div className="cart-empty"><span>▱</span><b>{tx(lang,'emptyCart')}</b><p>{tx(lang,'emptyCartText')}</p><button className="btn btn-primary" onClick={()=>{closeCart();navigate('/menu')}}>{tx(lang,'openMenu')} ↗</button></div>:<div className="cart-footer"><div className="cart-total"><span>{tx(lang,'total')}</span><b>{money(sum,lang)}</b></div><button className="btn btn-primary" disabled={cart.some(item=>item.available===false)} onClick={()=>setStep('checkout')}>{tx(lang,'toCheckout')} <span>↗</span></button></div>}
       </>:step==='checkout'?<form className="checkout-form checkout-form-active" onSubmit={submitDetails}><button className="back-link" type="button" onClick={()=>setStep('cart')}>← {tx(lang,'backToCart')}</button><p className="eyebrow">{tx(lang,'checkoutTitle')}</p><h3>{tx(lang,'checkoutTitle')}</h3><label>{tx(lang,'name')}<input name="name" autoComplete="name" required placeholder={tx(lang,'namePlaceholder')}/></label><label>{tx(lang,'phone')}<input name="phone" type="tel" autoComplete="tel" required placeholder="+7 (___) ___-__-__"/></label><label>{tx(lang,'address')}<textarea name="address" autoComplete="street-address" required placeholder={tx(lang,'addressPlaceholder')}/></label><label>{tx(lang,'orderComment')}<input name="comment" placeholder={tx(lang,'orderCommentPlaceholder')}/></label><button className="btn btn-primary" type="submit">{tx(lang,'continueReview')} <span>↗</span></button></form>
-      :<div className="order-review"><button className="back-link" type="button" onClick={()=>setStep('checkout')}>← {tx(lang,'checkoutTitle')}</button><p className="eyebrow">{tx(lang,'reviewTitle')}</p><h3>{tx(lang,'reviewTitle')}</h3><div className="review-items"><h4>{tx(lang,'reviewItems')}</h4>{cart.map(item=><div className="review-row" key={item.itemKey||item.id}><span>{productName(item,lang)} × {item.qty}</span><b>{money(item.price*item.qty,lang)}</b>{addonLabels(item,lang).length>0&&<small>{addonLabels(item,lang).join(' · ')}</small>}{item.note&&<small>{item.note}</small>}</div>)}</div><div className="review-recipient"><h4>{tx(lang,'recipient')}</h4><p>{customer?.name} · {customer?.phone}<br/>{customer?.address}{customer?.comment&&<><br/>{customer.comment}</>}</p></div><div className="cart-total"><span>{tx(lang,'reviewTotal')}</span><b>{money(sum,lang)}</b></div><label className="order-consent"><input type="checkbox" checked={consented} onChange={event=>setConsented(event.target.checked)}/><span>{tx(lang,'orderConsent')}</span></label>{orderError&&<p className="admin-error" role="alert">{orderError}</p>}<button className="btn btn-primary send-order" type="button" disabled={!consented||sending} onClick={submitOrder}>{sending?tx(lang,'orderSaving'):tx(lang,onlinePaymentEnabled?'payOnline':'sendWhatsApp')} <span>↗</span></button><small className="whatsapp-note">{tx(lang,onlinePaymentEnabled?'freedomPayNote':'whatsAppNote')}</small></div>}
+      :<div className="order-review"><button className="back-link" type="button" onClick={()=>setStep('checkout')}>← {tx(lang,'checkoutTitle')}</button><p className="eyebrow">{tx(lang,'reviewTitle')}</p><h3>{tx(lang,'reviewTitle')}</h3><div className="review-items"><h4>{tx(lang,'reviewItems')}</h4>{cart.map(item=><div className="review-row" key={item.itemKey||item.id}><span>{productName(item,lang)} × {item.qty}</span><b>{money(item.price*item.qty,lang)}</b>{addonLabels(item,lang).length>0&&<small>{addonLabels(item,lang).join(' · ')}</small>}{item.note&&<small>{item.note}</small>}</div>)}</div><div className="review-recipient"><h4>{tx(lang,'recipient')}</h4><p>{customer?.name} · {customer?.phone}<br/>{customer?.address}{customer?.comment&&<><br/>{customer.comment}</>}</p></div><div className="cart-total"><span>{tx(lang,'reviewTotal')}</span><b>{money(sum,lang)}</b></div><label className="order-consent"><input type="checkbox" checked={consented} onChange={event=>setConsented(event.target.checked)}/><span>{tx(lang,'orderConsent')}</span></label>{orderError&&<p className="admin-error" role="alert">{orderError}</p>}<button className="btn btn-primary send-order" type="button" disabled={!consented||sending} onClick={submitOrder}>{sending?tx(lang,'orderSaving'):tx(lang,demoPaymentEnabled?'demoPayOnline':onlinePaymentEnabled?'payOnline':'sendWhatsApp')} <span>↗</span></button><small className="whatsapp-note">{tx(lang,demoPaymentEnabled?'demoPayNote':onlinePaymentEnabled?'freedomPayNote':'whatsAppNote')}</small></div>}
     </aside>
   </>;
 }
@@ -268,6 +268,7 @@ function App() {
   });
   const [toast,setToast] = useState('');
   const [paymentNotice,setPaymentNotice] = useState('');
+  const [testPaymentOrder,setTestPaymentOrder] = useState(null);
   const page=path==='/admin'?'admin':path==='/menu'?'menu':path==='/contacts'?'contacts':'home';
   const menuItems=menuItemsState;
   const promotions=promotionsState;
@@ -299,6 +300,12 @@ function App() {
   useEffect(()=>{if(!toast)return;const timeout=window.setTimeout(()=>setToast(''),1900);return()=>window.clearTimeout(timeout)},[toast]);
   useEffect(()=>{
     const query=new URLSearchParams(window.location.search);
+    if(query.get('payment')==='mock'){
+      const orderId=query.get('order_id');
+      const order=demoPaymentEnabled&&orderId?readDemoList(demoStorageKeys.orders)?.find(item=>item.id===orderId):null;
+      if(order)setTestPaymentOrder(order);else setPaymentNotice(tx(lang,'paymentPending'));
+      return;
+    }
     if(query.get('payment')!=='return')return;
     const orderId=query.get('order_id');const orderCode=query.get('code');
     if(!orderId||!orderCode){setPaymentNotice(tx(lang,'paymentPending'));return}
@@ -320,12 +327,25 @@ function App() {
   };
   const saveOrder=async order=>{
     if(backendConfigured){await createOrder(order);if(onlinePaymentEnabled){const payment=await startFreedomPayPayment(order.id);return {paymentUrl:payment.payment_url}}}
-    const saved={...order,created_at:new Date().toISOString()};
+    const saved={...order,payment_provider:demoPaymentEnabled?'mock':null,created_at:new Date().toISOString()};
+    if(demoPaymentEnabled)writeDemoList(demoStorageKeys.orders,[saved,...(readDemoList(demoStorageKeys.orders)||[]).filter(item=>item.id!==saved.id)]);
     setOrders(current=>[saved,...current]);
+    if(demoPaymentEnabled)return {paymentUrl:`/?payment=mock&order_id=${encodeURIComponent(order.id)}`};
+  };
+  const completeTestPayment=success=>{
+    const order=testPaymentOrder;
+    if(!order)return;
+    setOrders(current=>current.map(item=>item.id===order.id?{...item,payment_status:success?'paid':'failed',provider_payment_id:success?`TEST-${order.order_code}`:null}:item));
+    if(success)setCart([]);
+    setTestPaymentOrder(null);
+    setPaymentNotice(tx(lang,success?'demoPaySuccess':'demoPayFailure'));
+    window.history.replaceState({},'', '/');
+    setPath('/');
   };
   return <>
     <Header page={page} navigate={navigate} itemCount={itemCount} openCart={()=>setCartOpen(true)} lang={lang} setLang={setLang}/>
     {paymentNotice&&<div className="payment-return-notice" role="status">{paymentNotice}<button type="button" aria-label={tx(lang,'close')} onClick={()=>setPaymentNotice('')}>×</button></div>}
+    {testPaymentOrder&&<div className="test-payment-overlay"><section className="test-payment-card" role="dialog" aria-modal="true" aria-labelledby="test-payment-heading"><p className="eyebrow">SMOKE BURGER · SANDBOX</p><h2 id="test-payment-heading">{tx(lang,'testPaymentTitle')}</h2><p>{tx(lang,'testPaymentText')}</p><div className="test-payment-total"><span>{testPaymentOrder.order_code}</span><b>{money(testPaymentOrder.total,lang)}</b></div><button className="btn btn-primary" onClick={()=>completeTestPayment(true)}>{tx(lang,'demoPaySuccessButton')}</button><button className="test-payment-fail" onClick={()=>completeTestPayment(false)}>{tx(lang,'demoPayFailButton')}</button><small>{tx(lang,'demoPayDisclaimer')}</small></section></div>}
     {page==='menu'?<MenuPage onCustomize={setCustomizeProduct} lang={lang} menuItems={menuItems}/>:page==='contacts'?<ContactsPage navigate={navigate} lang={lang}/>:page==='admin'?<AdminPage lang={lang} menuItems={menuItems} setMenuItems={setMenuItems} promotions={promotions} setPromotions={setPromotions} reviews={reviews} setReviews={setReviews} orders={orders} setOrders={setOrders}/>:<HomePage navigate={navigate} onCustomize={setCustomizeProduct} lang={lang} menuItems={menuItems} promotions={promotions} reviews={reviews.filter(review=>review.status==='approved')} onReview={submitReview}/>}
     <Footer navigate={navigate} lang={lang}/>
     {cartOpen&&<CartDrawer cart={cart} setCart={setCart} closeCart={()=>setCartOpen(false)} navigate={navigate} lang={lang} onCreateOrder={saveOrder}/>}
