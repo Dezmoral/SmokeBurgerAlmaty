@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   backendConfigured, demoMode, signIn, signOut, verifyStaff,
   fetchMenu, fetchPromotions, fetchReviews,
+  fetchOrders,
   saveMenuItem, deleteMenuItem, savePromotion, deletePromotion,
   setReviewStatus, deleteReview,
+  updateOrderStatus, deleteOrder,
 } from './backend.js';
 import { menuSections } from './data.js';
 import { ui } from './i18n.js';
@@ -114,7 +116,24 @@ function ReviewModeration({ lang, reviews, onStatus, onDelete }) {
   </div>;
 }
 
-export default function AdminPage({ lang, menuItems, setMenuItems, promotions, setPromotions, reviews, setReviews, onSignOut }) {
+function OrderManagement({ lang, orders, onStatus, onDelete }) {
+  const [savingId,setSavingId]=useState('');
+  const statuses=['new','accepted','preparing','ready','delivered','cancelled'];
+  const statusLabels={new:'orderStatusNew',accepted:'orderStatusAccepted',preparing:'orderStatusPreparing',ready:'orderStatusReady',delivered:'orderStatusDelivered',cancelled:'orderStatusCancelled'};
+  const money=value=>`${new Intl.NumberFormat(lang==='kk'?'kk-KZ':'ru-RU').format(value)} ₸`;
+  return <div className="admin-orders"><div className="admin-list-heading"><div><p className="eyebrow">{t(lang,'adminOrdersTab')}</p><h3>{t(lang,'adminOrdersTab')}</h3></div><span className="admin-count">{orders.filter(order=>order.status==='new').length}</span></div>
+    {!orders.length&&<p className="admin-empty">{t(lang,'orderNoOrders')}</p>}
+    {orders.map(order=><article className="admin-order-card" key={order.id}>
+      <div className="admin-order-head"><div><p className="eyebrow">{t(lang,'orderCode')}</p><h4>{order.order_code}</h4><small>{t(lang,'orderCreated')}: {new Date(order.created_at).toLocaleString(lang==='kk'?'kk-KZ':'ru-RU')}</small></div><select className="admin-input order-status" aria-label={t(lang,'orderStatus')} value={order.status} disabled={savingId===order.id} onChange={async event=>{setSavingId(order.id);await onStatus(order,event.target.value);setSavingId('')}}>{statuses.map(status=><option key={status} value={status}>{t(lang,statusLabels[status])}</option>)}</select></div>
+      <div className="admin-order-details"><div><b>{t(lang,'orderCustomer')}</b><p>{order.customer_name}<br/><a href={`tel:${order.customer_phone.replace(/[^\d+]/g,'')}`}>{order.customer_phone}</a></p></div><div><b>{t(lang,'orderAddress')}</b><p>{order.delivery_address}</p></div></div>
+      <div className="admin-order-items"><b>{t(lang,'orderItems')}</b>{order.items.map((item,index)=><p key={`${item.id}-${index}`}><span>{lang==='kk'?(item.name_kk||item.name_ru):item.name_ru} × {item.qty}</span><strong>{money(item.line_total)}</strong>{item.addons?.length>0&&<small>{item.addons.join(' · ')}</small>}{item.note&&<small>{item.note}</small>}</p>)}</div>
+      {order.customer_comment&&<p className="admin-order-comment"><b>{t(lang,'orderComment')}</b> {order.customer_comment}</p>}
+      <div className="admin-order-total"><b>{t(lang,'orderTotal')}</b><strong>{money(order.total)}</strong><button className="admin-danger" disabled={savingId===order.id} onClick={async()=>{if(window.confirm(t(lang,'adminDelete'))){setSavingId(order.id);await onDelete(order.id);setSavingId('')}}}>{t(lang,'adminDelete')}</button></div>
+    </article>)}
+  </div>;
+}
+
+export default function AdminPage({ lang, menuItems, setMenuItems, promotions, setPromotions, reviews, setReviews, orders, setOrders }) {
   const [authenticated,setAuthenticated]=useState(demoMode);
   const [authChecked,setAuthChecked]=useState(demoMode);
   const [activeTab,setActiveTab]=useState('menu');
@@ -128,11 +147,11 @@ export default function AdminPage({ lang, menuItems, setMenuItems, promotions, s
       if(cancelled)return;
       if(!allowed){setAuthChecked(true);return}
       setAuthenticated(true);
-      const [menuRows,promoRows,reviewRows]=await Promise.all([fetchMenu(),fetchPromotions(true),fetchReviews(true)]);
+      const [menuRows,promoRows,reviewRows,orderRows]=await Promise.all([fetchMenu(),fetchPromotions(true),fetchReviews(true),fetchOrders()]);
       if(cancelled)return;
       const remoteMenu=menuRows.map(row=>({...row.product,available:row.available}));
       if(remoteMenu.length)setMenuItems(remoteMenu);
-      setPromotions(promoRows);setAdminReviews(reviewRows);setReviews(reviewRows);
+      setPromotions(promoRows);setAdminReviews(reviewRows);setReviews(reviewRows);setOrders(orderRows);
       setAuthChecked(true);
     }).catch(err=>{if(!cancelled){setError(err.message);setAuthChecked(true)}});
     return()=>{cancelled=true};
@@ -142,10 +161,10 @@ export default function AdminPage({ lang, menuItems, setMenuItems, promotions, s
     setError('');
     try{await signIn(email,password);const allowed=await verifyStaff();if(!allowed){await signOut();throw new Error('У этой учётной записи нет доступа к панели сотрудников.')}
       setAuthenticated(true);setAuthChecked(false);
-      const [menuRows,promoRows,reviewRows]=await Promise.all([fetchMenu(),fetchPromotions(true),fetchReviews(true)]);
+      const [menuRows,promoRows,reviewRows,orderRows]=await Promise.all([fetchMenu(),fetchPromotions(true),fetchReviews(true),fetchOrders()]);
       const remoteMenu=menuRows.map(row=>({...row.product,available:row.available}));
       if(remoteMenu.length)setMenuItems(remoteMenu);
-      setPromotions(promoRows);setAdminReviews(reviewRows);setReviews(reviewRows);setAuthChecked(true);
+      setPromotions(promoRows);setAdminReviews(reviewRows);setReviews(reviewRows);setOrders(orderRows);setAuthChecked(true);
     }catch(err){setAuthenticated(false);setAuthChecked(true);setError(err.message||t(lang,'adminFailed'))}
   };
   const persistMenu=async item=>{
@@ -177,16 +196,29 @@ export default function AdminPage({ lang, menuItems, setMenuItems, promotions, s
       const next=adminReviews.filter(item=>item.id!==id);setAdminReviews(next);setReviews(next);notify(t(lang,'adminSaved'));
     }catch(err){notify(err.message||t(lang,'adminFailed'))}
   };
+  const changeOrderStatus=async(order,status)=>{
+    try{
+      if(backendConfigured)await updateOrderStatus(order.id,status);
+      setOrders(current=>current.map(item=>item.id===order.id?{...item,status}:item));notify(t(lang,'adminSaved'));
+    }catch(err){notify(err.message||t(lang,'adminFailed'))}
+  };
+  const removeOrder=async id=>{
+    try{
+      if(backendConfigured)await deleteOrder(id);
+      setOrders(current=>current.filter(item=>item.id!==id));notify(t(lang,'adminSaved'));
+    }catch(err){notify(err.message||t(lang,'adminFailed'))}
+  };
   const logout=async()=>{await signOut();setAuthenticated(false);setAuthChecked(true);onSignOut?.()};
   return <main className="admin-page">
     <section className="admin-page-head"><div><p className="eyebrow"><i/>{t(lang,'adminTitle')}</p><h1>{t(lang,'adminTitle')}</h1></div>{authenticated&&!demoMode&&<button className="admin-secondary" onClick={logout}>{t(lang,'adminSignOut')}</button>}</section>
     {demoMode&&<DemoNotice lang={lang}/>}
     {!demoMode&&!authenticated&&authChecked?<Login lang={lang} onLogin={handleLogin} error={error}/>:!authChecked?<p className="admin-empty">Загрузка…</p>:authenticated&&<>
-      <div className="admin-tabs" role="tablist"><button className={activeTab==='menu'?'active':''} onClick={()=>setActiveTab('menu')}>{t(lang,'adminMenuTab')}</button><button className={activeTab==='promotions'?'active':''} onClick={()=>setActiveTab('promotions')}>{t(lang,'adminPromotionsTab')}</button><button className={activeTab==='reviews'?'active':''} onClick={()=>setActiveTab('reviews')}>{t(lang,'adminReviewsTab')}</button></div>
+      <div className="admin-tabs" role="tablist"><button className={activeTab==='menu'?'active':''} onClick={()=>setActiveTab('menu')}>{t(lang,'adminMenuTab')}</button><button className={activeTab==='promotions'?'active':''} onClick={()=>setActiveTab('promotions')}>{t(lang,'adminPromotionsTab')}</button><button className={activeTab==='reviews'?'active':''} onClick={()=>setActiveTab('reviews')}>{t(lang,'adminReviewsTab')}</button><button className={activeTab==='orders'?'active':''} onClick={()=>setActiveTab('orders')}>{t(lang,'adminOrdersTab')}</button></div>
       <section className="admin-workspace">
         {activeTab==='menu'&&<MenuEditor lang={lang} items={menuItems} onSave={persistMenu} onDelete={removeMenuItem} onMessage={notify}/>}
         {activeTab==='promotions'&&<PromotionEditor lang={lang} promotions={promotions} onSave={persistPromotion} onDelete={removePromo} onMessage={notify}/>}
         {activeTab==='reviews'&&<ReviewModeration lang={lang} reviews={adminReviews} onStatus={moderate} onDelete={removeReview}/>}
+        {activeTab==='orders'&&<OrderManagement lang={lang} orders={orders} onStatus={changeOrderStatus} onDelete={removeOrder}/>}
       </section>
     </>}
     {notice&&<div className="admin-toast" role="status">{notice}</div>}

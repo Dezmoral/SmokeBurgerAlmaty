@@ -39,6 +39,13 @@ export const ui = {
   },
 };
 
+Object.assign(ui.ru,{
+  adminOrdersTab:'Заказы',orderCode:'Заказ',orderCustomer:'Клиент',orderAddress:'Адрес доставки',orderTotal:'Сумма',orderStatus:'Статус',orderCreated:'Создан',orderItems:'Состав',orderNoOrders:'Новых заказов пока нет.',orderConsent:'Соглашаюсь на обработку контактных данных для выполнения заказа.',orderSaving:'Сохраняем заказ…',orderSaveError:'Не удалось сохранить заявку. Попробуй ещё раз.',orderStatusNew:'Новая заявка',orderStatusAccepted:'Принят',orderStatusPreparing:'Готовится',orderStatusReady:'Готов к выдаче',orderStatusDelivered:'Выполнен',orderStatusCancelled:'Отменён',
+});
+Object.assign(ui.kk,{
+  adminOrdersTab:'Тапсырыстар',orderCode:'Тапсырыс',orderCustomer:'Клиент',orderAddress:'Жеткізу мекенжайы',orderTotal:'Сома',orderStatus:'Мәртебесі',orderCreated:'Жасалған',orderItems:'Құрамы',orderNoOrders:'Әзірге жаңа тапсырыс жоқ.',orderConsent:'Тапсырысты орындау үшін байланыс деректерімді өңдеуге келісемін.',orderSaving:'Тапсырыс сақталуда…',orderSaveError:'Тапсырысты сақтау мүмкін болмады. Қайталап көр.',orderStatusNew:'Жаңа өтінім',orderStatusAccepted:'Қабылданды',orderStatusPreparing:'Дайындалып жатыр',orderStatusReady:'Беруге дайын',orderStatusDelivered:'Орындалды',orderStatusCancelled:'Бас тартылды',
+});
+
 export const categoriesByLang = {
   ru:[['burgers','Бургеры и донеры'],['combos','Комбо'],['wings','Крылья'],['pizza','Пицца'],['snacks','Закуски'],['drinks','Напитки']],
   kk:[['burgers','Бургер мен донер'],['combos','Комбо'],['wings','Қанаттар'],['pizza','Пицца'],['snacks','Тіскебасар'],['drinks','Сусындар']],

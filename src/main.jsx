@@ -6,7 +6,7 @@ import { categoriesByLang, sectionText, ui } from './i18n.js';
 import AdminPage from './admin.jsx';
 import {
   backendConfigured, demoMode, demoStorageKeys, readDemoList, writeDemoList,
-  fetchMenu, fetchPromotions, fetchReviews, sendReview,
+  fetchMenu, fetchPromotions, fetchReviews, sendReview, createOrder,
 } from './backend.js';
 import '../styles.css';
 
@@ -199,10 +199,13 @@ function addonLabels(item,lang) {
   return labels;
 }
 
-function CartDrawer({ cart, setCart, closeCart, navigate, lang }) {
+function CartDrawer({ cart, setCart, closeCart, navigate, lang, onCreateOrder }) {
   const [step,setStep] = useState('cart');
   const [customer,setCustomer] = useState(null);
   const [sent,setSent] = useState(false);
+  const [consented,setConsented] = useState(false);
+  const [sending,setSending] = useState(false);
+  const [orderError,setOrderError] = useState('');
   const sum = cart.reduce((total,item)=>total+item.price*item.qty,0);
   const changeQty = (key,delta)=>setCart(current=>current.map(item=>(item.itemKey||item.id)===key?{...item,qty:item.qty+delta}:item).filter(item=>item.qty>0));
   const remove = key=>setCart(current=>current.filter(item=>(item.itemKey||item.id)!==key));
@@ -216,7 +219,22 @@ function CartDrawer({ cart, setCart, closeCart, navigate, lang }) {
     `${tx(lang,'address')}: ${customer?.address||''}`,
     customer?.comment?`${tx(lang,'orderComment')}: ${customer.comment}`:'',
   ].filter(Boolean).join('\n');
-  const whatsAppUrl=`https://wa.me/77770403407?text=${encodeURIComponent(messageLines)}`;
+  const submitOrder=async()=>{
+    if(!consented||sending)return;
+    setSending(true);setOrderError('');
+    const orderId=globalThis.crypto?.randomUUID?.()||'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,char=>{const random=Math.random()*16|0;return (char==='x'?random:(random&3|8)).toString(16)});
+    const orderCode=`SB-${orderId.replaceAll('-','').slice(0,8).toUpperCase()}`;
+    const target=window.open('about:blank','_blank');
+    if(target)target.opener=null;
+    const order={id:orderId,order_code:orderCode,customer_name:customer.name,customer_phone:customer.phone,delivery_address:customer.address,customer_comment:customer.comment||'',items:cart.map(item=>({id:item.id,name_ru:item.name,name_kk:item.nameKk||item.name,qty:item.qty,unit_price:item.price,line_total:item.price*item.qty,addons:addonLabels(item,lang),note:item.note||''})),total:sum,consent:true,status:'new'};
+    try{
+      await onCreateOrder(order);
+      const text=[messageLines.split('\n')[0],`${tx(lang,'orderCode')}: ${orderCode}`,messageLines.split('\n').slice(1).join('\n')].filter(Boolean).join('\n');
+      setSent(true);
+      const destination=`https://wa.me/77770403407?text=${encodeURIComponent(text)}`;
+      if(target)target.location.replace(destination);else window.location.assign(destination);
+    }catch(error){target?.close();setOrderError(error.message||tx(lang,'orderSaveError'));setSending(false)}
+  };
   return <>
     <div className="cart-overlay" aria-hidden="true" onClick={closeCart}/>
     <aside className="cart-drawer" role="dialog" aria-modal="true" aria-label={tx(lang,'cart')}>
@@ -226,7 +244,7 @@ function CartDrawer({ cart, setCart, closeCart, navigate, lang }) {
         {cart.some(item=>item.available===false)&&<p className="cart-stock-warning">{tx(lang,'unavailable')}</p>}
         {cart.length===0?<div className="cart-empty"><span>▱</span><b>{tx(lang,'emptyCart')}</b><p>{tx(lang,'emptyCartText')}</p><button className="btn btn-primary" onClick={()=>{closeCart();navigate('/menu')}}>{tx(lang,'openMenu')} ↗</button></div>:<div className="cart-footer"><div className="cart-total"><span>{tx(lang,'total')}</span><b>{money(sum,lang)}</b></div><button className="btn btn-primary" disabled={cart.some(item=>item.available===false)} onClick={()=>setStep('checkout')}>{tx(lang,'toCheckout')} <span>↗</span></button></div>}
       </>:step==='checkout'?<form className="checkout-form checkout-form-active" onSubmit={submitDetails}><button className="back-link" type="button" onClick={()=>setStep('cart')}>← {tx(lang,'backToCart')}</button><p className="eyebrow">{tx(lang,'checkoutTitle')}</p><h3>{tx(lang,'checkoutTitle')}</h3><label>{tx(lang,'name')}<input name="name" autoComplete="name" required placeholder={tx(lang,'namePlaceholder')}/></label><label>{tx(lang,'phone')}<input name="phone" type="tel" autoComplete="tel" required placeholder="+7 (___) ___-__-__"/></label><label>{tx(lang,'address')}<textarea name="address" autoComplete="street-address" required placeholder={tx(lang,'addressPlaceholder')}/></label><label>{tx(lang,'orderComment')}<input name="comment" placeholder={tx(lang,'orderCommentPlaceholder')}/></label><button className="btn btn-primary" type="submit">{tx(lang,'continueReview')} <span>↗</span></button></form>
-      :<div className="order-review"><button className="back-link" type="button" onClick={()=>setStep('checkout')}>← {tx(lang,'checkoutTitle')}</button><p className="eyebrow">{tx(lang,'reviewTitle')}</p><h3>{tx(lang,'reviewTitle')}</h3><div className="review-items"><h4>{tx(lang,'reviewItems')}</h4>{cart.map(item=><div className="review-row" key={item.itemKey||item.id}><span>{productName(item,lang)} × {item.qty}</span><b>{money(item.price*item.qty,lang)}</b>{addonLabels(item,lang).length>0&&<small>{addonLabels(item,lang).join(' · ')}</small>}{item.note&&<small>{item.note}</small>}</div>)}</div><div className="review-recipient"><h4>{tx(lang,'recipient')}</h4><p>{customer?.name} · {customer?.phone}<br/>{customer?.address}{customer?.comment&&<><br/>{customer.comment}</>}</p></div><div className="cart-total"><span>{tx(lang,'reviewTotal')}</span><b>{money(sum,lang)}</b></div><a className="btn btn-primary send-order" href={whatsAppUrl} target="_blank" rel="noreferrer" onClick={()=>setSent(true)}>{tx(lang,'sendWhatsApp')} <span>↗</span></a><small className="whatsapp-note">{tx(lang,'whatsAppNote')}</small></div>}
+      :<div className="order-review"><button className="back-link" type="button" onClick={()=>setStep('checkout')}>← {tx(lang,'checkoutTitle')}</button><p className="eyebrow">{tx(lang,'reviewTitle')}</p><h3>{tx(lang,'reviewTitle')}</h3><div className="review-items"><h4>{tx(lang,'reviewItems')}</h4>{cart.map(item=><div className="review-row" key={item.itemKey||item.id}><span>{productName(item,lang)} × {item.qty}</span><b>{money(item.price*item.qty,lang)}</b>{addonLabels(item,lang).length>0&&<small>{addonLabels(item,lang).join(' · ')}</small>}{item.note&&<small>{item.note}</small>}</div>)}</div><div className="review-recipient"><h4>{tx(lang,'recipient')}</h4><p>{customer?.name} · {customer?.phone}<br/>{customer?.address}{customer?.comment&&<><br/>{customer.comment}</>}</p></div><div className="cart-total"><span>{tx(lang,'reviewTotal')}</span><b>{money(sum,lang)}</b></div><label className="order-consent"><input type="checkbox" checked={consented} onChange={event=>setConsented(event.target.checked)}/><span>{tx(lang,'orderConsent')}</span></label>{orderError&&<p className="admin-error" role="alert">{orderError}</p>}<button className="btn btn-primary send-order" type="button" disabled={!consented||sending} onClick={submitOrder}>{sending?tx(lang,'orderSaving'):tx(lang,'sendWhatsApp')} <span>↗</span></button><small className="whatsapp-note">{tx(lang,'whatsAppNote')}</small></div>}
     </aside>
   </>;
 }
@@ -239,6 +257,7 @@ function App() {
   const [menuItemsState,setMenuItemsState] = useState(()=>demoMode?(readDemoList(demoStorageKeys.menu)||products.map(item=>({...item,available:true}))):products.map(item=>({...item,available:true})));
   const [promotionsState,setPromotionsState] = useState(()=>demoMode?(readDemoList(demoStorageKeys.promotions)||[]):[]);
   const [reviewsState,setReviewsState] = useState(()=>demoMode?(readDemoList(demoStorageKeys.reviews)||[]):[]);
+  const [ordersState,setOrdersState] = useState(()=>demoMode?(readDemoList(demoStorageKeys.orders)||[]):[]);
   const [cart,setCart] = useState(()=>{
     try {
       const saved=JSON.parse(localStorage.getItem('smokeBurgerCart')||'[]');
@@ -250,9 +269,11 @@ function App() {
   const menuItems=menuItemsState;
   const promotions=promotionsState;
   const reviews=reviewsState;
+  const orders=ordersState;
   const setMenuItems=next=>setMenuItemsState(current=>{const value=typeof next==='function'?next(current):next;if(demoMode)writeDemoList(demoStorageKeys.menu,value);return value});
   const setPromotions=next=>setPromotionsState(current=>{const value=typeof next==='function'?next(current):next;if(demoMode)writeDemoList(demoStorageKeys.promotions,value);return value});
   const setReviews=next=>setReviewsState(current=>{const value=typeof next==='function'?next(current):next;if(demoMode)writeDemoList(demoStorageKeys.reviews,value);return value});
+  const setOrders=next=>setOrdersState(current=>{const value=typeof next==='function'?next(current):next;if(demoMode)writeDemoList(demoStorageKeys.orders,value);return value});
   const itemCount=useMemo(()=>cart.reduce((sum,item)=>sum+item.qty,0),[cart]);
   const navigate=to=>{const [pathname,hash]=to.split('#');const destination=pathname||window.location.pathname;window.history.pushState({},'',`${destination}${hash?`#${hash}`:''}`);setPath(destination);setCartOpen(false);window.setTimeout(()=>{if(hash)document.getElementById(hash)?.scrollIntoView({behavior:'smooth'});else window.scrollTo({top:0,behavior:'smooth'})},0)};
   useEffect(()=>{const onPop=()=>{setPath(window.location.pathname);setCartOpen(false)};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop)},[]);
@@ -278,11 +299,16 @@ function App() {
     if(backendConfigured)await sendReview(review);
     else{const entry={...review,id:`review-${Date.now()}`,created_at:new Date().toISOString(),status:'pending'};setReviews(current=>[entry,...current])}
   };
+  const saveOrder=async order=>{
+    if(backendConfigured)await createOrder(order);
+    const saved={...order,created_at:new Date().toISOString()};
+    setOrders(current=>[saved,...current]);
+  };
   return <>
     <Header page={page} navigate={navigate} itemCount={itemCount} openCart={()=>setCartOpen(true)} lang={lang} setLang={setLang}/>
-    {page==='menu'?<MenuPage onCustomize={setCustomizeProduct} lang={lang} menuItems={menuItems}/>:page==='contacts'?<ContactsPage navigate={navigate} lang={lang}/>:page==='admin'?<AdminPage lang={lang} menuItems={menuItems} setMenuItems={setMenuItems} promotions={promotions} setPromotions={setPromotions} reviews={reviews} setReviews={setReviews}/>:<HomePage navigate={navigate} onCustomize={setCustomizeProduct} lang={lang} menuItems={menuItems} promotions={promotions} reviews={reviews.filter(review=>review.status==='approved')} onReview={submitReview}/>}
+    {page==='menu'?<MenuPage onCustomize={setCustomizeProduct} lang={lang} menuItems={menuItems}/>:page==='contacts'?<ContactsPage navigate={navigate} lang={lang}/>:page==='admin'?<AdminPage lang={lang} menuItems={menuItems} setMenuItems={setMenuItems} promotions={promotions} setPromotions={setPromotions} reviews={reviews} setReviews={setReviews} orders={orders} setOrders={setOrders}/>:<HomePage navigate={navigate} onCustomize={setCustomizeProduct} lang={lang} menuItems={menuItems} promotions={promotions} reviews={reviews.filter(review=>review.status==='approved')} onReview={submitReview}/>}
     <Footer navigate={navigate} lang={lang}/>
-    {cartOpen&&<CartDrawer cart={cart} setCart={setCart} closeCart={()=>setCartOpen(false)} navigate={navigate} lang={lang}/>}
+    {cartOpen&&<CartDrawer cart={cart} setCart={setCart} closeCart={()=>setCartOpen(false)} navigate={navigate} lang={lang} onCreateOrder={saveOrder}/>}
     {customizeProduct&&<CustomizeDialog key={customizeProduct.id} item={customizeProduct} lang={lang} onClose={()=>setCustomizeProduct(null)} onAdd={addToCart}/>}
     <div className={`toast ${toast?'show':''}`}>{toast}</div>
   </>;
