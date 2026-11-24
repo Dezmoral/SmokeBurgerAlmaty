@@ -10,6 +10,7 @@ const backendUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, '');
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const backendConfigured = Boolean(backendUrl && anonKey);
 export const demoMode = !backendConfigured;
+export const onlinePaymentEnabled = backendConfigured && import.meta.env.VITE_ONLINE_PAYMENT_ENABLED === 'true';
 
 function readSession() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.session) || 'null'); }
@@ -85,7 +86,7 @@ export async function verifyStaff() {
 export const fetchMenu = () => api('/rest/v1/menu_items?select=id,product,available&order=id.asc');
 export const fetchPromotions = (all = false) => api(`/rest/v1/promotions?select=*&order=created_at.desc${all ? '' : '&active=eq.true'}`);
 export const fetchReviews = (all = false) => api(`/rest/v1/reviews?select=id,author,rating,body,created_at,status&order=created_at.desc${all ? '' : '&status=eq.approved'}`);
-export const fetchOrders = () => api('/rest/v1/orders?select=id,order_code,customer_name,customer_phone,delivery_address,customer_comment,items,total,status,created_at,consent&order=created_at.desc');
+export const fetchOrders = () => api('/rest/v1/orders?select=id,order_code,customer_name,customer_phone,delivery_address,customer_comment,items,total,status,payment_status,payment_provider,created_at,consent&order=created_at.desc');
 
 export const saveMenuItem = item => api('/rest/v1/menu_items?on_conflict=id', {
   method: 'POST', body: { id: item.id, product: item.product, available: item.available !== false },
@@ -109,6 +110,19 @@ export const deleteReview = id => api(`/rest/v1/reviews?id=eq.${encodeURICompone
 export const createOrder = order => api('/rest/v1/orders', {
   method: 'POST', body: order,
 });
+async function invokePublicFunction(name, body) {
+  if (!backendConfigured) throw new Error('Для оплаты подключите Supabase.');
+  const response = await fetch(`${backendUrl}/functions/v1/${name}`, {
+    method: 'POST',
+    headers: { apikey: anonKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(result?.error || 'Не удалось связаться с платёжным сервисом.');
+  return result;
+}
+export const startFreedomPayPayment = orderId => invokePublicFunction('create-freedompay-payment', { order_id: orderId });
+export const getPaymentStatus = (orderId, orderCode) => invokePublicFunction('payment-status', { order_id: orderId, order_code: orderCode });
 export const updateOrderStatus = (id, status) => api(`/rest/v1/orders?id=eq.${encodeURIComponent(id)}`, {
   method: 'PATCH', body: { status }, headers: { Prefer: 'return=representation' },
 });

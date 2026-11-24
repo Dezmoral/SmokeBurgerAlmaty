@@ -124,7 +124,8 @@ function OrderManagement({ lang, orders, onStatus, onDelete }) {
   return <div className="admin-orders"><div className="admin-list-heading"><div><p className="eyebrow">{t(lang,'adminOrdersTab')}</p><h3>{t(lang,'adminOrdersTab')}</h3></div><span className="admin-count">{orders.filter(order=>order.status==='new').length}</span></div>
     {!orders.length&&<p className="admin-empty">{t(lang,'orderNoOrders')}</p>}
     {orders.map(order=><article className="admin-order-card" key={order.id}>
-      <div className="admin-order-head"><div><p className="eyebrow">{t(lang,'orderCode')}</p><h4>{order.order_code}</h4><small>{t(lang,'orderCreated')}: {new Date(order.created_at).toLocaleString(lang==='kk'?'kk-KZ':'ru-RU')}</small></div><select className="admin-input order-status" aria-label={t(lang,'orderStatus')} value={order.status} disabled={savingId===order.id} onChange={async event=>{setSavingId(order.id);await onStatus(order,event.target.value);setSavingId('')}}>{statuses.map(status=><option key={status} value={status}>{t(lang,statusLabels[status])}</option>)}</select></div>
+      <div className="admin-order-head"><div><p className="eyebrow">{t(lang,'orderCode')}</p><h4>{order.order_code}</h4><small>{t(lang,'orderCreated')}: {new Date(order.created_at).toLocaleString(lang==='kk'?'kk-KZ':'ru-RU')}</small></div><select className="admin-input order-status" aria-label={t(lang,'orderStatus')} value={order.status} disabled={savingId===order.id||(order.payment_provider==='freedompay'&&order.payment_status!=='paid')} onChange={async event=>{setSavingId(order.id);await onStatus(order,event.target.value);setSavingId('')}}>{statuses.map(status=><option key={status} value={status}>{t(lang,statusLabels[status])}</option>)}</select></div>
+      <p className={`order-payment-status payment-${order.payment_status||'unpaid'}`}>{t(lang,'paymentStatus')}: <b>{t(lang,`paymentStatus_${order.payment_status||'unpaid'}`)}</b></p>
       <div className="admin-order-details"><div><b>{t(lang,'orderCustomer')}</b><p>{order.customer_name}<br/><a href={`tel:${order.customer_phone.replace(/[^\d+]/g,'')}`}>{order.customer_phone}</a></p></div><div><b>{t(lang,'orderAddress')}</b><p>{order.delivery_address}</p></div></div>
       <div className="admin-order-items"><b>{t(lang,'orderItems')}</b>{order.items.map((item,index)=><p key={`${item.id}-${index}`}><span>{lang==='kk'?(item.name_kk||item.name_ru):item.name_ru} × {item.qty}</span><strong>{money(item.line_total)}</strong>{item.addons?.length>0&&<small>{item.addons.join(' · ')}</small>}{item.note&&<small>{item.note}</small>}</p>)}</div>
       {order.customer_comment&&<p className="admin-order-comment"><b>{t(lang,'orderComment')}</b> {order.customer_comment}</p>}
@@ -156,6 +157,12 @@ export default function AdminPage({ lang, menuItems, setMenuItems, promotions, s
     }).catch(err=>{if(!cancelled){setError(err.message);setAuthChecked(true)}});
     return()=>{cancelled=true};
   },[]);
+  useEffect(()=>{
+    if(!backendConfigured||!authenticated||activeTab!=='orders')return;
+    const refresh=()=>fetchOrders().then(setOrders).catch(err=>console.error('Orders could not be refreshed:',err));
+    const timer=window.setInterval(refresh,12000);
+    return()=>window.clearInterval(timer);
+  },[activeTab,authenticated]);
   const notify=message=>{setNotice(message);window.setTimeout(()=>setNotice(''),2600)};
   const handleLogin=async(email,password)=>{
     setError('');

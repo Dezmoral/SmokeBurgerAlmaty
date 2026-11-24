@@ -482,3 +482,5 @@ html{scrollbar-color:var(--orange) #111;scrollbar-width:thin}::-webkit-scrollbar
   .admin-notice{align-items:flex-start;font-size:12px}
   .admin-toast{left:5%;right:5%;bottom:12px}
 }
+.payment-return-notice{position:relative;z-index:5;display:flex;align-items:center;justify-content:center;gap:18px;padding:13px 24px;background:#ffb71b;color:#111;font-size:15px;font-weight:700;text-align:center}.payment-return-notice button{border:0;background:transparent;color:inherit;font-size:22px;line-height:1;cursor:pointer}
+.order-payment-status{margin:16px 0 0;padding:9px 12px;border-left:3px solid #8b857a;background:#24221e;color:#bdb7aa;font-size:14px}.order-payment-status b{color:#f4eee2}.payment-paid{border-color:#72c78a}.payment-paid b{color:#8be0a4}.payment-failed{border-color:#f04a32}.payment-failed b{color:#ff725e}.payment-pending,.payment-processing{border-color:#ffb71b}.payment-pending b,.payment-processing b{color:#ffbf2b}

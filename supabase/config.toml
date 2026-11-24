@@ -1,0 +1,8 @@
+[functions.create-freedompay-payment]
+verify_jwt = false
+
+[functions.freedompay-result]
+verify_jwt = false
+
+[functions.payment-status]
+verify_jwt = false
