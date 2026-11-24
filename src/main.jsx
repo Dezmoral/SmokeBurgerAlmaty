@@ -3,6 +3,11 @@ import { createRoot } from 'react-dom/client';
 import { menuSections, products } from './data.js';
 import { business } from './business.js';
 import { categoriesByLang, sectionText, ui } from './i18n.js';
+import AdminPage from './admin.jsx';
+import {
+  backendConfigured, demoMode, demoStorageKeys, readDemoList, writeDemoList,
+  fetchMenu, fetchPromotions, fetchReviews, sendReview,
+} from './backend.js';
 import '../styles.css';
 
 const INSTAGRAM = 'https://www.instagram.com/smoke.burger.kz/';
@@ -58,6 +63,7 @@ function Footer({ navigate, lang }) {
       <nav className="footer-links" aria-label={lang==='ru'?'Ссылки в подвале':'Төменгі сілтемелер'}>
         <SiteLink to="/contacts" navigate={navigate}>{tx(lang,'contacts')} <span>↗</span></SiteLink>
         <a href={INSTAGRAM} target="_blank" rel="noreferrer">Instagram <span>↗</span></a>
+        <SiteLink to="/admin" navigate={navigate}>{tx(lang,'staffPanel')} <span>↗</span></SiteLink>
       </nav>
     </div>
     <div className="footer-bottom"><span>© 2026 Smoke Burger</span><span>{tx(lang,'studentProject')}</span></div>
@@ -65,17 +71,40 @@ function Footer({ navigate, lang }) {
 }
 
 function ProductCard({ item, onCustomize, lang }) {
+  const available=item.available!==false;
   return <article className="product-card">
-    <div className="product-photo"><img className={item.imageFit==='contain'?'image-contain':''} src={item.image} alt={productName(item,lang)} loading="lazy" onError={event=>{event.currentTarget.style.display='none'}}/>{item.badge&&<span className="product-badge">{item.badge}</span>}</div>
+    <div className={`product-photo ${available?'':'is-unavailable'}`}><img className={item.imageFit==='contain'?'image-contain':''} src={item.image} alt={productName(item,lang)} loading="lazy" onError={event=>{event.currentTarget.style.display='none'}}/>{item.badge&&<span className="product-badge">{item.badge}</span>}{!available&&<span className="unavailable-badge">{tx(lang,'unavailable')}</span>}</div>
     <div className="product-info"><h3>{productName(item,lang)}</h3><p>{productDescription(item,lang)}</p>
       <div className="product-calories" aria-label={`≈ ${item.calories} ${tx(lang,'calorieUnit')}`}>≈ {item.calories} {tx(lang,'calorieUnit')}</div>
-      <div className="product-bottom"><span className="product-price">{money(item.price,lang)}</span><button className="add-button" onClick={()=>onCustomize(item)} aria-label={`${tx(lang,'customize')}: ${productName(item,lang)}`}>+</button></div>
+      <div className="product-bottom"><span className="product-price">{money(item.price,lang)}</span><button className="add-button" disabled={!available} onClick={()=>onCustomize(item)} aria-label={`${tx(lang,'customize')}: ${productName(item,lang)}`}>+</button></div>
     </div>
   </article>;
 }
 
-function HomePage({ navigate, onCustomize, lang }) {
-  const featured = ['chicken-burger','chicken-lavash','wings-10','box-chicken'].map(id=>products.find(item=>item.id===id));
+function PromotionOffers({ promotions, lang }) {
+  const visible=promotions.filter(item=>item.active!==false&&(!item.valid_from||item.valid_from<=new Date().toISOString().slice(0,10))&&(!item.valid_until||item.valid_until>=new Date().toISOString().slice(0,10)));
+  if(!visible.length)return null;
+  return <section className="section offer-section"><div className="section-head"><div><p className="eyebrow"><i/>{tx(lang,'promotionsTitle')}</p><h2>{lang==='ru'?'ВЫГОДНЫЕ ПРЕДЛОЖЕНИЯ':'ТИІМДІ ҰСЫНЫСТАР'}</h2></div></div>
+    <div className="offer-grid">{visible.map(offer=><article className="offer-card" key={offer.id}><span className="offer-label">{tx(lang,'promotionsTitle')}</span><h3>{lang==='kk'?offer.title_kk:offer.title_ru}</h3><p>{lang==='kk'?offer.description_kk:offer.description_ru}</p><details><summary>{tx(lang,'promoTerms')}</summary><p>{lang==='kk'?offer.terms_kk:offer.terms_ru}</p></details>{offer.valid_until&&<small>{tx(lang,'promoUntil')} {new Date(`${offer.valid_until}T00:00:00`).toLocaleDateString(lang==='kk'?'kk-KZ':'ru-RU')}</small>}</article>)}</div>
+  </section>;
+}
+
+function ReviewsSection({ reviews, lang, onSubmit }) {
+  const [name,setName]=useState('');
+  const [body,setBody]=useState('');
+  const [rating,setRating]=useState(5);
+  const [sent,setSent]=useState(false);
+  const [error,setError]=useState('');
+  const submit=async event=>{event.preventDefault();setError('');try{await onSubmit({author:name.trim(),body:body.trim(),rating:Number(rating)});setName('');setBody('');setRating(5);setSent(true);window.setTimeout(()=>setSent(false),5000)}catch(err){setError(err.message||t(lang,'adminFailed'))}};
+  return <section className="section reviews-section" id="reviews"><div className="section-head"><div><p className="eyebrow"><i/>{tx(lang,'reviewsTitle')}</p><h2>{lang==='ru'?'ЧТО ГОВОРЯТ ГОСТИ':'ҚОНАҚТАР НЕ ДЕЙДІ'}</h2></div></div>
+    <div className="reviews-layout"><div className="review-list">{reviews.length?reviews.slice(0,4).map(review=><article className="review-card" key={review.id}><div className="review-card-head"><b>{review.author}</b><span>{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</span></div><p>{review.body}</p><small>{new Date(review.created_at).toLocaleDateString(lang==='kk'?'kk-KZ':'ru-RU')}</small></article>):<div className="reviews-empty"><span>“</span><p>{tx(lang,'reviewsEmpty')}</p></div>}</div>
+      <form className="review-form" onSubmit={submit}><p className="eyebrow">{tx(lang,'reviewsSubmit')}</p><label>{tx(lang,'reviewsName')}<input className="admin-input" value={name} onChange={event=>setName(event.target.value)} minLength={2} maxLength={60} required/></label><label>{tx(lang,'reviewsRating')}<select className="admin-input" value={rating} onChange={event=>setRating(event.target.value)}>{[5,4,3,2,1].map(value=><option key={value} value={value}>{'★'.repeat(value)} ({value}/5)</option>)}</select></label><label>{tx(lang,'reviewsBody')}<textarea className="admin-input" value={body} onChange={event=>setBody(event.target.value)} minLength={10} maxLength={1000} required/></label><button className="btn btn-primary" type="submit">{tx(lang,'reviewsSubmit')} <span>↗</span></button>{sent&&<p className="review-success" role="status">{tx(lang,'reviewsPending')}</p>}{error&&<p className="admin-error" role="alert">{error}</p>}</form>
+    </div>
+  </section>;
+}
+
+function HomePage({ navigate, onCustomize, lang, menuItems, promotions, reviews, onReview }) {
+  const featured = ['chicken-burger','chicken-lavash','wings-10','box-chicken'].map(id=>menuItems.find(item=>item.id===id&&item.available!==false)).filter(Boolean);
   const words = ui[lang].heroWords;
   const [highlight,...lastWords] = words[2].split(' ');
   return <main>
@@ -97,6 +126,8 @@ function HomePage({ navigate, onCustomize, lang }) {
     <section className="promo-band"><div className="promo-copy"><p className="eyebrow"><i/>{tx(lang,'comboEyebrow')}</p><h2>{tx(lang,'comboTitle1')}<br/><em>{tx(lang,'comboTitle2')}</em></h2><p>{tx(lang,'comboDescription')}</p><SiteLink className="btn btn-primary" to="/menu#combos" navigate={navigate}>{tx(lang,'chooseCombo')} <span>↗</span></SiteLink></div>
       <div className="promo-art"><div className="promo-food-grid"><img className="promo-food-main" src="/assets/instagram/chicken-box.png" alt={`${tx(lang,'foodBurger')} Smoke Burger`}/><img src="https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=500&q=85" alt={tx(lang,'foodFries')}/><img src="https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=500&q=85" alt={tx(lang,'foodCola')}/></div><div className="promo-art-caption"><b>{tx(lang,'foodBurger')}</b><span>+</span><b>{tx(lang,'foodFries')}</b><span>+</span><b>{tx(lang,'foodCola')}</b></div></div>
     </section>
+    <PromotionOffers promotions={promotions} lang={lang}/>
+    <ReviewsSection reviews={reviews} lang={lang} onSubmit={onReview}/>
     <section className="section promise"><div><span className="promise-number">01</span><h3>{tx(lang,'promise1Title')}</h3><p>{tx(lang,'promise1Text')}</p></div><div><span className="promise-number">02</span><h3>{tx(lang,'promise2Title')}</h3><p>{tx(lang,'promise2Text')}</p></div><div><span className="promise-number">03</span><h3>{tx(lang,'promise3Title')}</h3><p>{tx(lang,'promise3Text')}</p></div></section>
     <section className="instagram-block"><div><p className="eyebrow"><i/>{tx(lang,'instaEyebrow')}</p><h2>SMOKE BURGER<br/><em>{tx(lang,'instaTitle').includes('INSTAGRAM')?'В INSTAGRAM':'INSTAGRAM-ДА'}</em></h2><p>{tx(lang,'instaDescription')}</p><a className="btn btn-outline" href={INSTAGRAM} target="_blank" rel="noreferrer">@smoke.burger.kz <span>↗</span></a></div>
       <a className="insta-art" href={INSTAGRAM} target="_blank" rel="noreferrer" aria-label="@smoke.burger.kz"><div className="insta-card-header"><span className="insta-avatar"><BurgerIcon/></span><span className="insta-account"><b>@smoke.burger.kz</b><small>{tx(lang,'instaOfficial')}</small></span><span className="insta-open">{tx(lang,'openProfile')}</span></div><div className="insta-photos"><img src="/assets/instagram/chicken-box.png" alt={`${tx(lang,'foodBurger')} Smoke Burger`}/><img src="/assets/instagram/wings.png" alt={lang==='ru'?'Крылышки Smoke Burger':'Smoke Burger қанаттары'}/><img src="/assets/instagram/pizza.png" alt={lang==='ru'?'Пицца Smoke Burger':'Smoke Burger пиццасы'}/></div></a>
@@ -104,13 +135,13 @@ function HomePage({ navigate, onCustomize, lang }) {
   </main>;
 }
 
-function MenuPage({ onCustomize, lang }) {
+function MenuPage({ onCustomize, lang, menuItems }) {
   const categories = categoriesByLang[lang];
   return <main>
     <section className="page-hero menu-hero"><div><p className="eyebrow"><i/>{tx(lang,'menuEyebrow')}</p><h1>{tx(lang,'menuTitle')}</h1><p>{tx(lang,'menuDescription')}</p></div><div className="menu-hero-art"><img src="/assets/menu/maki/combo.jpg" alt={lang==='ru'?'Комбо с бургером, фри и напитком':'Бургер, фри және сусыны бар комбо'}/><div><small>SMOKE BURGER</small><b>{lang==='ru'?'МЕНЮ':'МӘЗІР'}<br/>{lang==='ru'?'БЕЗ ЛИШНИХ':'ТАҢДАУ ӨЗІҢДЕ'}<br/>{lang==='ru'?'СЛОВ':''}</b></div><span>{lang==='ru'?'100% ВКУС':'100% ДӘМ'}</span></div></section>
     <div className="menu-toolbar"><div className="menu-cats">{categories.map(([id,label])=><a key={id} href={`#${id}`}>{label}</a>)}</div></div>
     <p className="nutrition-note menu-nutrition-note">{tx(lang,'calorieNote')}</p>
-    {menuSections.map(section=>{const items=products.filter(item=>item.category===section.category);const [title,note]=sectionText[lang][section.category];return <section className="menu-section" id={section.id} key={section.id}><div className="menu-section-head"><h2>{title}</h2><p>{note}</p></div><div className="product-grid">{items.map(item=><ProductCard key={item.id} item={item} onCustomize={onCustomize} lang={lang}/>)}</div></section>})}
+    {menuSections.map(section=>{const items=menuItems.filter(item=>item.category===section.category);const [title,note]=sectionText[lang][section.category];return <section className="menu-section" id={section.id} key={section.id}><div className="menu-section-head"><h2>{title}</h2><p>{note}</p></div><div className="product-grid">{items.map(item=><ProductCard key={item.id} item={item} onCustomize={onCustomize} lang={lang}/>)}</div></section>})}
   </main>;
 }
 
@@ -192,7 +223,8 @@ function CartDrawer({ cart, setCart, closeCart, navigate, lang }) {
       <div className="cart-head"><div><p className="eyebrow">{tx(lang,'cartTitle')}</p><h2>{tx(lang,'cart')} <span className="cart-count">{cart.reduce((n,item)=>n+item.qty,0)}</span></h2></div><button className="icon-button" onClick={closeCart} aria-label={tx(lang,'close')}>×</button></div>
       {sent?<div className="order-success"><span>✓</span><h3>{tx(lang,'orderReady')}</h3><p>{tx(lang,'orderReadyText')}</p><button className="btn btn-primary" onClick={closeCart}>{tx(lang,'continueShopping')}</button></div>:step==='cart'?<>
         <div className="cart-items">{cart.map(item=><div className="cart-row" key={item.itemKey||item.id}><span className="cart-row-name">{productName(item,lang)}</span><span className="cart-row-price">{money(item.price*item.qty,lang)}</span><small className="cart-row-calories">≈ {item.calories} {tx(lang,'calorieUnit')} · {tx(lang,'perServing')}</small>{addonLabels(item,lang).length>0&&<small className="cart-row-calories">{addonLabels(item,lang).join(' · ')}</small>}{item.note&&<small className="cart-row-calories">{item.note}</small>}<div className="cart-row-controls"><button className="qty-btn" onClick={()=>changeQty(item.itemKey||item.id,-1)} aria-label="−">−</button><span className="qty">{item.qty}</span><button className="qty-btn" onClick={()=>changeQty(item.itemKey||item.id,1)} aria-label="+">+</button><button className="remove-item" onClick={()=>remove(item.itemKey||item.id)}>{tx(lang,'remove')}</button></div></div>)}</div>
-        {cart.length===0?<div className="cart-empty"><span>▱</span><b>{tx(lang,'emptyCart')}</b><p>{tx(lang,'emptyCartText')}</p><button className="btn btn-primary" onClick={()=>{closeCart();navigate('/menu')}}>{tx(lang,'openMenu')} ↗</button></div>:<div className="cart-footer"><div className="cart-total"><span>{tx(lang,'total')}</span><b>{money(sum,lang)}</b></div><button className="btn btn-primary" onClick={()=>setStep('checkout')}>{tx(lang,'toCheckout')} <span>↗</span></button></div>}
+        {cart.some(item=>item.available===false)&&<p className="cart-stock-warning">{tx(lang,'unavailable')}</p>}
+        {cart.length===0?<div className="cart-empty"><span>▱</span><b>{tx(lang,'emptyCart')}</b><p>{tx(lang,'emptyCartText')}</p><button className="btn btn-primary" onClick={()=>{closeCart();navigate('/menu')}}>{tx(lang,'openMenu')} ↗</button></div>:<div className="cart-footer"><div className="cart-total"><span>{tx(lang,'total')}</span><b>{money(sum,lang)}</b></div><button className="btn btn-primary" disabled={cart.some(item=>item.available===false)} onClick={()=>setStep('checkout')}>{tx(lang,'toCheckout')} <span>↗</span></button></div>}
       </>:step==='checkout'?<form className="checkout-form checkout-form-active" onSubmit={submitDetails}><button className="back-link" type="button" onClick={()=>setStep('cart')}>← {tx(lang,'backToCart')}</button><p className="eyebrow">{tx(lang,'checkoutTitle')}</p><h3>{tx(lang,'checkoutTitle')}</h3><label>{tx(lang,'name')}<input name="name" autoComplete="name" required placeholder={tx(lang,'namePlaceholder')}/></label><label>{tx(lang,'phone')}<input name="phone" type="tel" autoComplete="tel" required placeholder="+7 (___) ___-__-__"/></label><label>{tx(lang,'address')}<textarea name="address" autoComplete="street-address" required placeholder={tx(lang,'addressPlaceholder')}/></label><label>{tx(lang,'orderComment')}<input name="comment" placeholder={tx(lang,'orderCommentPlaceholder')}/></label><button className="btn btn-primary" type="submit">{tx(lang,'continueReview')} <span>↗</span></button></form>
       :<div className="order-review"><button className="back-link" type="button" onClick={()=>setStep('checkout')}>← {tx(lang,'checkoutTitle')}</button><p className="eyebrow">{tx(lang,'reviewTitle')}</p><h3>{tx(lang,'reviewTitle')}</h3><div className="review-items"><h4>{tx(lang,'reviewItems')}</h4>{cart.map(item=><div className="review-row" key={item.itemKey||item.id}><span>{productName(item,lang)} × {item.qty}</span><b>{money(item.price*item.qty,lang)}</b>{addonLabels(item,lang).length>0&&<small>{addonLabels(item,lang).join(' · ')}</small>}{item.note&&<small>{item.note}</small>}</div>)}</div><div className="review-recipient"><h4>{tx(lang,'recipient')}</h4><p>{customer?.name} · {customer?.phone}<br/>{customer?.address}{customer?.comment&&<><br/>{customer.comment}</>}</p></div><div className="cart-total"><span>{tx(lang,'reviewTotal')}</span><b>{money(sum,lang)}</b></div><a className="btn btn-primary send-order" href={whatsAppUrl} target="_blank" rel="noreferrer" onClick={()=>setSent(true)}>{tx(lang,'sendWhatsApp')} <span>↗</span></a><small className="whatsapp-note">{tx(lang,'whatsAppNote')}</small></div>}
     </aside>
@@ -204,26 +236,51 @@ function App() {
   const [cartOpen,setCartOpen] = useState(false);
   const [lang,setLang] = useState(()=>localStorage.getItem('smokeBurgerLang')==='kk'?'kk':'ru');
   const [customizeProduct,setCustomizeProduct] = useState(null);
+  const [menuItemsState,setMenuItemsState] = useState(()=>demoMode?(readDemoList(demoStorageKeys.menu)||products.map(item=>({...item,available:true}))):products.map(item=>({...item,available:true})));
+  const [promotionsState,setPromotionsState] = useState(()=>demoMode?(readDemoList(demoStorageKeys.promotions)||[]):[]);
+  const [reviewsState,setReviewsState] = useState(()=>demoMode?(readDemoList(demoStorageKeys.reviews)||[]):[]);
   const [cart,setCart] = useState(()=>{
     try {
       const saved=JSON.parse(localStorage.getItem('smokeBurgerCart')||'[]');
-      return Array.isArray(saved)?saved.filter(item=>item&&productById.has(item.id)&&Number.isInteger(item.qty)&&item.qty>0).map(item=>({...productById.get(item.id),...item,price:Number.isFinite(item.price)?item.price:productById.get(item.id).price,calories:Number.isFinite(item.calories)?item.calories:productById.get(item.id).calories,itemKey:item.itemKey||item.id,addons:item.addons||{}})):[];
+      return Array.isArray(saved)?saved.filter(item=>item&&typeof item.id==='string'&&Number.isInteger(item.qty)&&item.qty>0).map(item=>{const base=productById.get(item.id)||item;return {...base,...item,price:Number.isFinite(item.price)?item.price:base.price,calories:Number.isFinite(item.calories)?item.calories:base.calories,itemKey:item.itemKey||item.id,addons:item.addons||{}}}):[];
     } catch { return []; }
   });
   const [toast,setToast] = useState('');
-  const page=path==='/menu'?'menu':path==='/contacts'?'contacts':'home';
+  const page=path==='/admin'?'admin':path==='/menu'?'menu':path==='/contacts'?'contacts':'home';
+  const menuItems=menuItemsState;
+  const promotions=promotionsState;
+  const reviews=reviewsState;
+  const setMenuItems=next=>setMenuItemsState(current=>{const value=typeof next==='function'?next(current):next;if(demoMode)writeDemoList(demoStorageKeys.menu,value);return value});
+  const setPromotions=next=>setPromotionsState(current=>{const value=typeof next==='function'?next(current):next;if(demoMode)writeDemoList(demoStorageKeys.promotions,value);return value});
+  const setReviews=next=>setReviewsState(current=>{const value=typeof next==='function'?next(current):next;if(demoMode)writeDemoList(demoStorageKeys.reviews,value);return value});
   const itemCount=useMemo(()=>cart.reduce((sum,item)=>sum+item.qty,0),[cart]);
   const navigate=to=>{const [pathname,hash]=to.split('#');const destination=pathname||window.location.pathname;window.history.pushState({},'',`${destination}${hash?`#${hash}`:''}`);setPath(destination);setCartOpen(false);window.setTimeout(()=>{if(hash)document.getElementById(hash)?.scrollIntoView({behavior:'smooth'});else window.scrollTo({top:0,behavior:'smooth'})},0)};
   useEffect(()=>{const onPop=()=>{setPath(window.location.pathname);setCartOpen(false)};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop)},[]);
   useEffect(()=>{try{localStorage.setItem('smokeBurgerCart',JSON.stringify(cart))}catch{}},[cart]);
   useEffect(()=>{localStorage.setItem('smokeBurgerLang',lang);document.documentElement.lang=lang},[lang]);
+  useEffect(()=>{
+    if(!backendConfigured)return;
+    let cancelled=false;
+    Promise.all([fetchMenu(),fetchPromotions(),fetchReviews()]).then(([menuRows,promoRows,reviewRows])=>{
+      if(cancelled)return;
+      const remoteMenu=menuRows.map(row=>({...row.product,available:row.available}));
+      if(remoteMenu.length)setMenuItemsState(remoteMenu);
+      setPromotionsState(promoRows);setReviewsState(reviewRows);
+    }).catch(error=>console.error('Smoke Burger data could not be loaded:',error));
+    return()=>{cancelled=true};
+  },[]);
+  useEffect(()=>{setCart(current=>current.map(item=>{const currentMenuItem=menuItems.find(entry=>entry.id===item.id);return {...item,available:currentMenuItem?currentMenuItem.available!==false:false}}))},[menuItems]);
   useEffect(()=>{document.body.classList.toggle('cart-open',cartOpen);return()=>document.body.classList.remove('cart-open')},[cartOpen]);
   useEffect(()=>{if(!cartOpen)return;const onKeyDown=event=>{if(event.key==='Escape')setCartOpen(false)};window.addEventListener('keydown',onKeyDown);return()=>window.removeEventListener('keydown',onKeyDown)},[cartOpen]);
   useEffect(()=>{if(!toast)return;const timeout=window.setTimeout(()=>setToast(''),1900);return()=>window.clearTimeout(timeout)},[toast]);
   const addToCart=item=>{setCart(current=>{const existing=current.find(entry=>(entry.itemKey||entry.id)===item.itemKey);return existing?current.map(entry=>(entry.itemKey||entry.id)===item.itemKey?{...entry,qty:entry.qty+1}:entry):[...current,item]});setCustomizeProduct(null);setToast(`${productName(item,lang)} ${tx(lang,'added')}`)};
+  const submitReview=async review=>{
+    if(backendConfigured)await sendReview(review);
+    else{const entry={...review,id:`review-${Date.now()}`,created_at:new Date().toISOString(),status:'pending'};setReviews(current=>[entry,...current])}
+  };
   return <>
     <Header page={page} navigate={navigate} itemCount={itemCount} openCart={()=>setCartOpen(true)} lang={lang} setLang={setLang}/>
-    {page==='menu'?<MenuPage onCustomize={setCustomizeProduct} lang={lang}/>:page==='contacts'?<ContactsPage navigate={navigate} lang={lang}/>:<HomePage navigate={navigate} onCustomize={setCustomizeProduct} lang={lang}/>}
+    {page==='menu'?<MenuPage onCustomize={setCustomizeProduct} lang={lang} menuItems={menuItems}/>:page==='contacts'?<ContactsPage navigate={navigate} lang={lang}/>:page==='admin'?<AdminPage lang={lang} menuItems={menuItems} setMenuItems={setMenuItems} promotions={promotions} setPromotions={setPromotions} reviews={reviews} setReviews={setReviews}/>:<HomePage navigate={navigate} onCustomize={setCustomizeProduct} lang={lang} menuItems={menuItems} promotions={promotions} reviews={reviews.filter(review=>review.status==='approved')} onReview={submitReview}/>}
     <Footer navigate={navigate} lang={lang}/>
     {cartOpen&&<CartDrawer cart={cart} setCart={setCart} closeCart={()=>setCartOpen(false)} navigate={navigate} lang={lang}/>}
     {customizeProduct&&<CustomizeDialog key={customizeProduct.id} item={customizeProduct} lang={lang} onClose={()=>setCustomizeProduct(null)} onAdd={addToCart}/>}
