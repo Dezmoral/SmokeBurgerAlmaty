@@ -215,3 +215,50 @@ html{scrollbar-color:var(--orange) #111;scrollbar-width:thin}::-webkit-scrollbar
 .product-photo img.image-contain{object-fit:contain;padding:7px;filter:drop-shadow(0 7px 9px rgba(0,0,0,.24)) saturate(1.05)}
 .customize-product-image:has(img.image-contain){background:radial-gradient(ellipse,#ffbd43,#dc7916)}
 .customize-product-image img.image-contain{object-fit:contain;padding:4px;filter:drop-shadow(0 4px 5px rgba(0,0,0,.25))}
+
+/* Final readability pass: raise supporting text consistently across the site. */
+.topline{font-size:11px}
+.main-nav{font-size:13px}
+.cart-trigger{font-size:12px}
+.eyebrow,.product-badge,.contact-card-label,.menu-hero-art small{font-size:11px}
+.btn,.text-link{font-size:13px}
+.hero-sub,.page-hero>div:first-child>p:not(.eyebrow),.contact-details p,.contact-card p{font-size:14px}
+.hero-note,.hero-bottom,.hero-number span,.menu-section-head p,.menu-toolbar>span,.nutrition-note{font-size:12px}
+.product-info p,.promise p,.promo-copy>p:not(.eyebrow),.instagram-block>div:first-child>p:not(.eyebrow){font-size:13px;line-height:1.65}
+.menu-cats a{font-size:12px}
+.insta-account small,.insta-open,.promo-art-caption,.site-footer small,.site-footer>div a,.checkout-form small,.whatsapp-note,.review-row small,.remove-item,.back-link{font-size:12px}
+.contact-card-label{font-size:11px}
+.product-calories,.cart-row-calories{font-size:14px}
+.cart-empty p,.checkout-form label,.review-items h4,.review-recipient h4{font-size:13px}
+.checkout-form input,.checkout-form textarea,.review-row,.review-recipient p{font-size:14px}
+.customize-title .eyebrow{font-size:11px}
+.customize-options legend,.variant-option,.addon-option,.customize-note{font-size:14px}
+.variant-option b,.addon-option b{font-size:13px}
+.customize-footer>span,.customize-footer .btn{font-size:13px}
+
+@media(max-width:600px){
+  .topline{font-size:11px}
+  .main-nav{font-size:13px}
+  .cart-trigger{font-size:13px}
+  .eyebrow,.product-badge,.contact-card-label,.menu-hero-art small{font-size:11px}
+  .btn,.text-link{font-size:13px}
+  .hero-sub,.page-hero>div:first-child>p:not(.eyebrow),.contact-details p,.contact-card p{font-size:14px}
+  .hero-note,.hero-bottom,.hero-number span,.menu-section-head p,.menu-toolbar>span,.nutrition-note{font-size:12px}
+  .product-info p,.promise p,.promo-copy>p:not(.eyebrow),.instagram-block>div:first-child>p:not(.eyebrow){font-size:13px}
+  .menu-cats a{font-size:12px}
+  .insta-account small,.insta-open,.promo-art-caption,.site-footer small,.site-footer>div a,.checkout-form small,.whatsapp-note,.review-row small,.remove-item,.back-link{font-size:12px}
+  .product-calories,.cart-row-calories{font-size:13px}
+  .cart-empty p,.checkout-form label,.review-items h4,.review-recipient h4{font-size:13px}
+  .checkout-form input,.checkout-form textarea,.review-row,.review-recipient p{font-size:13px}
+  .customize-title .eyebrow{font-size:11px}
+  .customize-options legend,.variant-option,.addon-option,.customize-note{font-size:13px}
+  .variant-option b,.addon-option b{font-size:12px}
+  .customize-footer>span,.customize-footer .btn{font-size:12px}
+}
+
+@media(max-width:650px) and (max-height:760px){
+  .variant-option,.addon-option{font-size:12px}
+  .variant-option b,.addon-option b{font-size:11px}
+  .customize-note{font-size:12px}
+  .customize-footer .btn{font-size:12px}
+}
