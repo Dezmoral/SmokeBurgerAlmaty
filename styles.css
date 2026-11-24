@@ -308,7 +308,7 @@ html{scrollbar-color:var(--orange) #111;scrollbar-width:thin}::-webkit-scrollbar
 }
 
 /* Compact footer: keep brand, tagline and links on one calm line. */
-.site-footer{padding:0 5.2% 12px;border-top:1px solid #302e2b;background:linear-gradient(180deg,#151412 0%,#111110 100%);row-gap:0}
+.site-footer{display:block;padding:0 5.2% 12px;border-top:1px solid #302e2b;background:linear-gradient(180deg,#151412 0%,#111110 100%);row-gap:0}
 .site-footer>.footer-top{width:100%;min-height:82px;margin:0;display:flex;align-items:center;justify-content:space-between;gap:26px}
 .site-footer>.footer-top>.brand{flex:0 0 auto;gap:9px}
 .site-footer .brand-mark{width:36px;height:36px;flex-basis:36px}
