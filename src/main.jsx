@@ -251,6 +251,31 @@ function CartDrawer({ cart, setCart, closeCart, navigate, lang, onCreateOrder })
   </>;
 }
 
+function KaspiTestPayment({ order, lang, onSuccess, onFail }) {
+  return <div className="test-payment-overlay">
+    <section className="kaspi-checkout" role="dialog" aria-modal="true" aria-labelledby="kaspi-checkout-title">
+      <header className="kaspi-checkout-header"><span className="kaspi-wordmark">kaspi.kz</span><span className="kaspi-demo-chip">DEMO · ТЕСТ</span></header>
+      <div className="kaspi-checkout-content">
+        <div className="kaspi-payment-info">
+          <p className="kaspi-overline">{tx(lang,'testPaymentTitle')}</p>
+          <h2 id="kaspi-checkout-title">{tx(lang,'kaspiPayTo')}</h2>
+          <div className="kaspi-merchant"><span className="kaspi-merchant-icon">SB</span><span><b>Smoke Burger</b><small>{tx(lang,'kaspiOrder')}</small></span></div>
+          <div className="kaspi-amount"><small>{tx(lang,'kaspiAmount')}</small><strong>{money(order.total,lang)}</strong></div>
+          <div className="kaspi-order-code"><span>{tx(lang,'orderCode')}</span><b>{order.order_code}</b></div>
+          <div className="kaspi-account"><span className="kaspi-account-icon">K</span><span><b>Kaspi Gold</b><small>{tx(lang,'kaspiTestAccount')}</small></span><span className="kaspi-check">✓</span></div>
+        </div>
+        <div className="kaspi-qr-side">
+          <p>{tx(lang,'kaspiQrTitle')}</p>
+          <div className="kaspi-fake-qr" aria-hidden="true"><i/><i/><i/><span>K</span></div>
+          <small>{tx(lang,'kaspiQrDisclaimer')}</small>
+        </div>
+      </div>
+      <div className="kaspi-actions"><button className="kaspi-pay-button" onClick={onSuccess}>{tx(lang,'kaspiConfirm')}</button><button className="kaspi-cancel-button" onClick={onFail}>{tx(lang,'demoPayFailButton')}</button></div>
+      <footer className="kaspi-test-footer"><span>DEMO</span>{tx(lang,'demoPayDisclaimer')}</footer>
+    </section>
+  </div>;
+}
+
 function App() {
   const [path,setPath] = useState(window.location.pathname);
   const [cartOpen,setCartOpen] = useState(false);
@@ -345,7 +370,7 @@ function App() {
   return <>
     <Header page={page} navigate={navigate} itemCount={itemCount} openCart={()=>setCartOpen(true)} lang={lang} setLang={setLang}/>
     {paymentNotice&&<div className="payment-return-notice" role="status">{paymentNotice}<button type="button" aria-label={tx(lang,'close')} onClick={()=>setPaymentNotice('')}>×</button></div>}
-    {testPaymentOrder&&<div className="test-payment-overlay"><section className="test-payment-card" role="dialog" aria-modal="true" aria-labelledby="test-payment-heading"><p className="eyebrow">SMOKE BURGER · SANDBOX</p><h2 id="test-payment-heading">{tx(lang,'testPaymentTitle')}</h2><p>{tx(lang,'testPaymentText')}</p><div className="test-payment-total"><span>{testPaymentOrder.order_code}</span><b>{money(testPaymentOrder.total,lang)}</b></div><button className="btn btn-primary" onClick={()=>completeTestPayment(true)}>{tx(lang,'demoPaySuccessButton')}</button><button className="test-payment-fail" onClick={()=>completeTestPayment(false)}>{tx(lang,'demoPayFailButton')}</button><small>{tx(lang,'demoPayDisclaimer')}</small></section></div>}
+    {testPaymentOrder&&<KaspiTestPayment order={testPaymentOrder} lang={lang} onSuccess={()=>completeTestPayment(true)} onFail={()=>completeTestPayment(false)}/>}
     {page==='menu'?<MenuPage onCustomize={setCustomizeProduct} lang={lang} menuItems={menuItems}/>:page==='contacts'?<ContactsPage navigate={navigate} lang={lang}/>:page==='admin'?<AdminPage lang={lang} menuItems={menuItems} setMenuItems={setMenuItems} promotions={promotions} setPromotions={setPromotions} reviews={reviews} setReviews={setReviews} orders={orders} setOrders={setOrders}/>:<HomePage navigate={navigate} onCustomize={setCustomizeProduct} lang={lang} menuItems={menuItems} promotions={promotions} reviews={reviews.filter(review=>review.status==='approved')} onReview={submitReview}/>}
     <Footer navigate={navigate} lang={lang}/>
     {cartOpen&&<CartDrawer cart={cart} setCart={setCart} closeCart={()=>setCartOpen(false)} navigate={navigate} lang={lang} onCreateOrder={saveOrder}/>}
