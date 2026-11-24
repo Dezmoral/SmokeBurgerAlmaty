@@ -56,7 +56,6 @@ function Footer({ navigate, lang }) {
       <Brand navigate={navigate}/>
       <p className="footer-tagline">{tx(lang,'footerTagline')}</p>
       <nav className="footer-links" aria-label={lang==='ru'?'Ссылки в подвале':'Төменгі сілтемелер'}>
-        <SiteLink to="/menu" navigate={navigate}>{tx(lang,'menu')} <span>↗</span></SiteLink>
         <SiteLink to="/contacts" navigate={navigate}>{tx(lang,'contacts')} <span>↗</span></SiteLink>
         <a href={INSTAGRAM} target="_blank" rel="noreferrer">Instagram <span>↗</span></a>
       </nav>
