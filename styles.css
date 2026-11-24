@@ -306,3 +306,30 @@ html{scrollbar-color:var(--orange) #111;scrollbar-width:thin}::-webkit-scrollbar
   .language-toggle{min-height:34px;padding:0 7px;font-size:9px}
   .cart-trigger{min-height:40px;padding:0 10px;font-size:12px}
 }
+
+/* Give the footer the same intentional structure as the new header. */
+.site-footer{padding:0 5.2% 20px;border-top:1px solid #302e2b;background:linear-gradient(180deg,#171614 0%,#111110 100%);row-gap:0}
+.site-footer>.footer-top{width:min(100%,1440px);min-height:142px;margin:0 auto;display:grid;grid-template-columns:minmax(180px,1fr) minmax(220px,1.1fr) minmax(350px,1fr);align-items:center;gap:30px}
+.site-footer>.footer-top>.brand{justify-self:start}
+.site-footer .footer-tagline{justify-self:center;margin:0;color:var(--white);font:600 clamp(16px,1.4vw,20px)/1.25 var(--display);letter-spacing:.035em;text-align:center}
+.site-footer>.footer-top>.footer-links{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:8px}
+.site-footer>.footer-top>.footer-links a{display:inline-flex;align-items:center;gap:10px;min-height:42px;padding:0 13px;border:1px solid #34312c;border-radius:4px;background:#1b1a18;color:#d2ccc0;font-size:13px;font-weight:700;transition:color .18s,border-color .18s,background .18s}
+.site-footer>.footer-top>.footer-links a span{color:var(--orange);font-size:14px}
+.site-footer>.footer-top>.footer-links a:hover{border-color:#765827;background:#242016;color:var(--white)}
+.site-footer>.footer-bottom{width:min(100%,1440px);min-height:52px;margin:0 auto;border-top:1px solid #302e2b;display:flex;align-items:center;justify-content:space-between;gap:16px;color:#aaa49a;font-size:12px}
+.site-footer>.footer-bottom span:last-child{color:#817c73}
+
+@media(max-width:900px){
+  .site-footer>.footer-top{grid-template-columns:1fr 1fr;gap:22px;padding:26px 0}
+  .site-footer .footer-tagline{grid-column:2;grid-row:1;justify-self:end;text-align:right}
+  .site-footer>.footer-top>.footer-links{grid-column:1/-1;justify-content:flex-start}
+}
+
+@media(max-width:600px){
+  .site-footer{padding:0 5% 14px}
+  .site-footer>.footer-top{min-height:0;padding:24px 0 20px;grid-template-columns:1fr;gap:18px}
+  .site-footer .footer-tagline{grid-column:auto;grid-row:auto;justify-self:start;text-align:left;font-size:18px}
+  .site-footer>.footer-top>.footer-links{grid-column:auto;gap:7px}
+  .site-footer>.footer-top>.footer-links a{min-height:40px;padding:0 10px;font-size:12px;gap:6px}
+  .site-footer>.footer-bottom{min-height:0;padding-top:13px;flex-wrap:wrap;gap:6px 16px;font-size:11px}
+}

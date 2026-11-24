@@ -52,9 +52,16 @@ function Header({ page, navigate, itemCount, openCart, lang, setLang }) {
 
 function Footer({ navigate, lang }) {
   return <footer className="site-footer">
-    <Brand navigate={navigate}/><p>{tx(lang,'footerTagline')}</p>
-    <div><SiteLink to="/menu" navigate={navigate}>{tx(lang,'menu')}</SiteLink><SiteLink to="/contacts" navigate={navigate}>{tx(lang,'contacts')}</SiteLink><a href={INSTAGRAM} target="_blank" rel="noreferrer">Instagram ↗</a></div>
-    <small>© 2026 Smoke Burger · {tx(lang,'studentProject')}</small>
+    <div className="footer-top">
+      <Brand navigate={navigate}/>
+      <p className="footer-tagline">{tx(lang,'footerTagline')}</p>
+      <nav className="footer-links" aria-label={lang==='ru'?'Ссылки в подвале':'Төменгі сілтемелер'}>
+        <SiteLink to="/menu" navigate={navigate}>{tx(lang,'menu')} <span>↗</span></SiteLink>
+        <SiteLink to="/contacts" navigate={navigate}>{tx(lang,'contacts')} <span>↗</span></SiteLink>
+        <a href={INSTAGRAM} target="_blank" rel="noreferrer">Instagram <span>↗</span></a>
+      </nav>
+    </div>
+    <div className="footer-bottom"><span>© 2026 Smoke Burger</span><span>{tx(lang,'studentProject')}</span></div>
   </footer>;
 }
 
